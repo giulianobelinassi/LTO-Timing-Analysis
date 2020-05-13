@@ -2,30 +2,27 @@
 # Taken from https://github.com/phrb/ExperimentalDesign.jl/blob/master/examples/Screening%20with%20Plackett-Burman%20Designs.ipynb
 
 using Pkg
-Pkg.status()
 
-Pkg.add("StatsModels")
+#Pkg.add("StatsModels")
 
 using ExperimentalDesign, StatsModels, GLM, DataFrames, Distributions, Random
 
-design = PlackettBurman(6)
+include("gcc.jl")
+
+design = PlackettBurman(5)
 design.matrix
 
-println(design.formula)
+println(design)
+
+
+exit()
 
 design.dummy_factors
 
 design.factors
 
 function y(x)
-    return (1.2) +
-           (2.3 * x[1]) +
-           (-3.4 * x[2]) +
-           (7.12 * x[3]) +
-           (-0.03 * x[4]) +
-           (1.1 * x[5]) +
-           (-0.5 * x[6]) +
-           (1.1 * randn())
+    return run_gcc(x)
 end
 
 Random.seed!(192938)

@@ -10,4 +10,4 @@ all:
 	$(CSMITH) $(CSMITH_FLAGS) --max-funcs $@ > generated/$@.c
 
 clean:
-	rm -f *.c
+	rm -f generated/*.c
