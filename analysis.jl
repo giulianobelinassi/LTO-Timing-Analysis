@@ -15,10 +15,8 @@ end
 
 random_design_generator = RandomDesign((
           Distributions.DiscreteUniform(1, 300),     # File size, in number of functions
-          Distributions.DiscreteUniform(1, 1000000), # Max lto Partition.
-          Distributions.DiscreteUniform(1, 65536),   # Max streaming Parallelism
           Distributions.DiscreteUniform(1, 10000),   # Min lto partition
-          Distributions.DiscreteUniform(1, 65536)))  # Lto Partitions
+          Distributions.Bernoulli(0.5)))             # Run in parallel?
 
 println(random_design_generator)
 
