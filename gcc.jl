@@ -26,16 +26,25 @@ end
 # launch it measuring the time taken.
 
 function run_gcc(x)
-	prefix = "csmith_cache/"
+	file_prefix = "processed/"
+	compiler_prefix = "/tmp/gcc11_autopar/usr/local/bin/"
 
-	if !isdir(prefix)
-	    mkdir(prefix)
-	end
+	#if !isdir(prefix)
+	#    mkdir(prefix)
+	#end
 
-	program_size = convert(Int64, x[1])
-	file = prefix * string(x[1]) * ".c"
+	file = file_prefix * x[1]
 	lto_min_partition = x[2]
 	run_parallel = x[3]
+
+	file_splitted = split(x[1], ".")
+	extension = file_splitted[length(file_splitted)]
+
+	if (extension == "cc")
+		compiler = compiler_prefix * "g++"
+	else
+		compiler = compiler_prefix * "gcc"
+	end
 
 	if (run_parallel)
 		parallel = "-fparallel-jobs=2"
@@ -43,10 +52,8 @@ function run_gcc(x)
 		parallel = ""
 	end
 
-	maybe_generate_code(program_size, file)
-
 	proc = "/tmp/gcc11_autopar/usr/local/bin/gcc"
-	argv = ["--param=promote-statics=1", "-I/usr/include/csmith/", "-Wno-all", "--param=lto-min-partition=$lto_min_partition", file]
+	argv = ["--param=promote-statics=1", "-I/usr/include/csmith/", "-Wno-all", "--param=lto-min-partition=$lto_min_partition", "-c", "-o", "temp.o", "-O2", file]
 
 	if parallel != ""
 		append!(argv, [parallel])
@@ -58,13 +65,12 @@ function run_gcc(x)
 	run(command)
 	t2 = time_ns()
 
+	rm("temp.o")
 
-	rm("a.out")
-
-return (t2 - t1)/1e9
+	return (t2 - t1)/1e9
 end
 
 
-# Quick test
-#x = run_gcc([10, 1, 1, 1, 1])
+#Quick test
+#x = run_gcc(["0-0-10.cc", 1, false])
 #println(x)

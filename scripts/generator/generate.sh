@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Generate programs with the following number of functions:
-PROGRAMS="20 40 60 80 100 120 140 160 180 200 220 240 280 300"
+#PROGRAMS="20 40 60 80 100 120 140 160 180 200 220 240 280 300"
+PROGRAMS=$(seq 1 300)
 
 # Number of parallel jobs:
 PARALLEL=8
@@ -44,7 +45,8 @@ fi
 
 run()
 {
-    make -j$PARALLEL $PROGRAMS
+	ulimit -S -s 131072
+	make -C generated -j$PARALLEL $PROGRAMS
 }
 
 parse_args()
