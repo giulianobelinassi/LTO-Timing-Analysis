@@ -46,12 +46,18 @@ function generate_database()
 	files = readdir(prefix)
 	output_csv_header()
 
+	num_files = length(files)
+
+	i = 0
 	for file in files
 		if file == "README.txt"
 			continue
 		end
 
-		println("Testing file: ", file)
+		a = Int64(floor((i * 100)/num_files))
+		percent = "[" * string(a) * "%]"
+
+		println(percent, " Testing file: ", file)
 
 		splitted = split(file, ".")
 		base = splitted[1]
@@ -68,6 +74,8 @@ function generate_database()
 
 		output_csv_line(file, num_funcs, expected_insn, 1, false, serial_results)
 		output_csv_line(file, num_funcs, expected_insn, 1, true, parallel_results)
+
+		i = i + 1
 	end
 end
 
