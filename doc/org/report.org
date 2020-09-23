@@ -1,0 +1,170 @@
+#+STARTUP: overview indent inlineimages logdrawer
+#+TITLE: LTO Timing Analysis
+#+AUTHOR:
+#+LANGUAGE:    en
+#+TAGS: noexport(n)
+#+OPTIONS:   H:3 num:t toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+COLUMNS: %25ITEM %TODO %3PRIORITY %TAGS
+#+SEQ_TODO: TODO(t!) STARTED(s!) WAITING(w@) APPT(a!) | DONE(d!) CANCELLED(c!) DEFERRED(f!)
+
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+LATEX_HEADER: \usepackage[margin=1.7cm]{geometry}
+#+LATEX_HEADER: \usepackage{sourcecodepro}
+#+LATEX_HEADER: \usepackage{booktabs}
+#+LATEX_HEADER: \usepackage{array}
+#+LATEX_HEADER: \usepackage{colortbl}
+#+LATEX_HEADER: \usepackage{listings}
+#+LATEX_HEADER: \usepackage{algpseudocode}
+#+LATEX_HEADER: \usepackage{algorithm}
+#+LATEX_HEADER: \usepackage{graphicx}
+#+LATEX_HEADER: \usepackage[english]{babel}
+#+LATEX_HEADER: \usepackage[scale=2]{ccicons}
+#+LATEX_HEADER: \usepackage{hyperref}
+#+LATEX_HEADER: \usepackage{relsize}
+#+LATEX_HEADER: \usepackage{amsmath}
+#+LATEX_HEADER: \usepackage{bm}
+#+LATEX_HEADER: \usepackage{amsfonts}
+#+LATEX_HEADER: \usepackage{wasysym}
+#+LATEX_HEADER: \usepackage{float}
+#+LATEX_HEADER: \usepackage{ragged2e}
+#+LATEX_HEADER: \usepackage{textcomp}
+#+LATEX_HEADER: \usepackage{pgfplots}
+#+LATEX_HEADER: \usepackage{todonotes}
+#+LATEX_HEADER: \renewcommand*{\UrlFont}{\ttfamily\smaller\relax}
+
+* Parsing Data
+Reading  data, converting  from wide  to long  format, saving  intermediary data
+frame to =.csv/=.
+
+#+begin_SRC julia :eval no-export :exports code
+using CSV, DataFrames, DataFramesMeta
+
+df = CSV.read("../../output_corei7.csv", delim = "; ")
+df_long = stack(df, Not([:Filename, :Functions,
+                         :Expected_insns, :Parallel]),
+                variable_name = :Repetition,
+                value_name = :CompileTime)
+
+# Why are there :Expected_insns = 0?
+df_long = filter(:Expected_insns => x -> x > 0,
+                 df_long)
+
+CSV.write("csv/corei7_long.csv", df_long)
+#+end_SRC
+
+#+RESULTS:
+: "csv/corei7_long.csv"
+
+* Looking at Data
+Pair plot for all variables:
+
+#+begin_SRC R :results graphics output :session *R* :file "img/histograms.pdf" :width 10 :height 10 :eval no-export :exports both
+library(ggplot2)
+library(dplyr)
+library(GGally)
+
+df = read.csv("csv/corei7_long.csv")
+
+log_df = df %>%
+    select(-Repetition, -Filename) %>%
+    mutate(log_Expected_insns = log(Expected_insns),
+           log_Functions = log(Functions),
+           log_CompileTime = log(CompileTime)) %>%
+    select(log_Expected_insns,
+           log_Functions,
+           log_CompileTime,
+           Parallel)
+
+ggpairs(log_df)
+#+end_SRC
+
+#+RESULTS:
+[[file:img/histograms.pdf]]
+
+Scatter plots splitting by value of Parallel:
+
+#+begin_SRC R :results graphics output :session *R* :file "img/scatter.pdf" :width 10 :height 10 :eval no-export :exports both
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+plot_df = df %>%
+    pivot_longer(cols = c("Expected_insns", "Functions"),
+                 names_to = "Parameter",
+                 values_to = "Value")
+
+ggplot(plot_df) +
+    facet_grid(Parameter ~ Parallel, scales = "free_x") +
+    geom_point(aes(x = Value,
+                   y = CompileTime,
+                   color = Parallel),
+               alpha = 0.4) +
+    scale_x_log10() +
+    scale_y_log10() +
+    scale_color_brewer(palette = "Dark2")
+#+end_SRC
+
+#+RESULTS:
+[[file:img/scatter.pdf]]
+
+Separating training  and testing data  sets, randomly picking rows.  Defining an
+MSE function and fitting an arbitrary performance model.
+
+#+begin_SRC julia :eval no-export :exports both
+using GLM, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
+
+df = CSV.read("csv/corei7_long.csv")
+
+train_ratio = 0.2
+train_size = round(Int, 0.2 * nrow(df))
+train_rows = shuffle(1:nrow(df))[1:train_size]
+df_train = df[train_rows, :]
+
+test_rows = [x for x in 1:nrow(df) if !(x in train_rows)]
+df_test = df[test_rows, :]
+
+mse(y1, y2) = mean((y1 - y2) .^ 2)
+
+regression_full = lm(@formula(CompileTime ~ ((Expected_insns + Expected_insns ^ 2) +
+                                            (Functions + Functions ^ 2 + 1 / Functions)) *
+                                            Parallel),
+                     df_train)
+#+end_SRC
+
+#+RESULTS:
+#+begin_example
+StatsModels.TableRegressionModel{LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,LinearAlgebra.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
+
+CompileTime ~ 1 + Expected_insns + :(Expected_insns ^ 2) + Functions + :(Functions ^ 2) + :(1 / Functions) + Parallel + Expected_insns & Parallel + :(Expected_insns ^ 2) & Parallel + Functions & Parallel + :(Functions ^ 2) & Parallel + :(1 / Functions) & Parallel
+
+Coefficients:
+──────────────────────────────────────────────────────────────────────────────────────────────────────
+                                      Coef.   Std. Error       t  Pr(>|t|)     Lower 95%     Upper 95%
+──────────────────────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                     0.657556     0.028575      23.01    <1e-99   0.601537      0.713575
+Expected_insns                  0.000110704  2.67277e-6    41.42    <1e-99   0.000105464   0.000115944
+Expected_insns ^ 2              2.24493e-10  9.14308e-12   24.55    <1e-99   2.06569e-10   2.42418e-10
+Functions                       0.00599946   0.000196239   30.57    <1e-99   0.00561475    0.00638417
+Functions ^ 2                  -8.41491e-7   2.89766e-8   -29.04    <1e-99  -8.98297e-7   -7.84685e-7
+1 / Functions                  -0.62109      0.0891584     -6.97    <1e-11  -0.795877     -0.446303
+Parallel                        0.0195577    0.0403666      0.48    0.6281  -0.0595774     0.0986927
+Expected_insns & Parallel      -2.08749e-6   3.7138e-6     -0.56    0.5741  -9.36806e-6    5.19308e-6
+Expected_insns ^ 2 & Parallel  -1.83652e-10  1.28749e-11  -14.26    <1e-44  -2.08892e-10  -1.58412e-10
+Functions & Parallel           -0.00208176   0.000277288   -7.51    <1e-13  -0.00262536   -0.00153816
+Functions ^ 2 & Parallel        3.29986e-7   4.08796e-8     8.07    <1e-15   2.49845e-7    4.10126e-7
+1 / Functions & Parallel        0.00682178   0.127472       0.05    0.9573  -0.243075      0.256718
+──────────────────────────────────────────────────────────────────────────────────────────────────────
+#+end_example
+
+Computing MSE for the trained model using the test set.
+
+#+begin_SRC julia :eval no-export :exports both
+mse_full = mse(df_test[:, :CompileTime],
+               predict(regression_full, select(df_test, Not(:CompileTime))))
+#+end_SRC
+
+#+RESULTS:
+: 1.184301348770404
