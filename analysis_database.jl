@@ -53,17 +53,13 @@ for name in names(results)
 	rename!(results, replace.(names(results), h))
 end
 
-# Take the mean
-#results =  transform(results, AsTable(5:length(names(results))) .=>
-#                              ByRow.(mean) .=> :mean)
-
 #D = results
 D = results[sample(axes(results, 1), 30; replace = false, ordered = true), :]
-D = stack(D, Not([:filename, :functions, :expected_insns, :parallel]))
+D = stack(D, Not([:filename, :functions, :expected_insns, :parallel, :inlined_percentage, :num_partitions]))
 
 sort!(D, [:expected_insns, :value])
 
-screening_model = @formula(value ~ ((expected_insns) * (parallel)))
+screening_model = @formula(value ~ ((expected_insns) * (parallel * num_partitions * inlined_percentage)))
 screening_fit = lm(screening_model, D)
 
 println(screening_fit)
