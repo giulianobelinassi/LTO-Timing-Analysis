@@ -1,6 +1,49 @@
 #!/usr/bin/julia
+using ExperimentalDesign, StatsModels, GLM, DataFrames, Distributions, Random, CSV, StatsBase, Plots, LinearAlgebra
 
-using ExperimentalDesign, StatsModels, GLM, DataFrames, Distributions, Random, CSV, StatsBase
+function mse(y, ŷ)
+	n = length(y)
+	diff = y - ŷ
+	acc = dot(diff, diff)
+
+	return acc/n
+end
+
+function plot_df(results)
+	sort!(results, [:expected_insns])
+
+	transform!(results, AsTable(5:15) .=>
+						  ByRow.([mean, sqrt∘var]) .=> [:mean, :stdev])
+
+	parallel = filter(Row -> Row.parallel == true, results)
+	seq = filter(Row -> Row.parallel == false, results)
+
+	mse_seq      = mse(seq.mean, seq.predicted)
+	mse_parallel = mse(parallel.mean, parallel.predicted)
+
+	mse_seq_str  = string(round(mse_seq, digits=2))
+	mse_par_str  = string(round(mse_parallel, digits=2))
+
+	println(mse_seq)
+	println(mse_parallel)
+
+	pltobj = plot(seq.expected_insns, seq.mean, yerror=1.96*seq.stdev/sqrt(15), label="Sequential", xaxis="Number of Instructions", yaxis="Time (s)")
+	plot!(pltobj, parallel.expected_insns, parallel.mean, yerror=1.96*seq.stdev/sqrt(15), label="Parallel (2 threads)")
+	plot!(pltobj, seq.expected_insns, seq.predicted, label=("Sequential Pred. (mse=" * mse_seq_str * ")"))
+	plot!(pltobj, parallel.expected_insns, parallel.predicted, label=("Parallel Pred. (mse=" * mse_par_str * ")"))
+
+	savefig("times-insns.svg")
+
+	sort!(seq, [:functions, :mean])
+	sort!(parallel, [:functions, :mean])
+
+	pltobj = plot(seq.functions, seq.mean, yerror=1.96*seq.stdev/sqrt(15), label="Sequential", xaxis="Number of Functions", yaxis="Time (s)")
+	plot!(pltobj, parallel.functions, parallel.mean, yerror=1.96*seq.stdev/sqrt(15), label="Parallel (2 threads)")
+	plot!(pltobj, seq.functions, seq.predicted, label=("Sequential Pred. (mse=" * mse_seq_str * ")"))
+	plot!(pltobj, parallel.functions, parallel.predicted, label=("Parallel Pred. (mse=" * mse_par_str * ")"))
+
+	savefig("times-functions.svg")
+end
 
 results = CSV.read("output_corei7.csv", delim="; ", DataFrame)
 
@@ -12,18 +55,32 @@ end
 
 # Take the mean
 #results =  transform(results, AsTable(5:length(names(results))) .=>
-#                              ByRow.(mean∘skipmissing) .=> :mean)
+#                              ByRow.(mean) .=> :mean)
 
 #D = results
 D = results[sample(axes(results, 1), 30; replace = false, ordered = true), :]
 D = stack(D, Not([:filename, :functions, :expected_insns, :parallel]))
 
-screening_model = @formula(value ~ ((expected_insns + expected_insns^2) * (parallel)))
+sort!(D, [:expected_insns, :value])
+
+screening_model = @formula(value ~ ((expected_insns) * (parallel)))
 screening_fit = lm(screening_model, D)
 
 println(screening_fit)
-
 println(adjr2(screening_fit))
+
+results[!, :predicted] = predict(screening_fit, results)
+plot_df(results)
+
+#best_index = findmin(random_design.matrix[!, :prediction])
+#best_prediction = DataFrame(select(random_design.matrix, Not(:prediction))[best_index[2], :])
+#println(best_prediction)
+#println(best_index)
+#
+#best_prediction[!, :response] = y.(eachrow(best_prediction))
+#CSV.write("best_prediction.csv", best_prediction)
+
+###############################################################################
 
 #rename!(results, replace.(names(results), "Functions" => "_"))
 #rename!(results, replace.(names(results), "-" => "_"))
