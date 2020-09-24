@@ -59,6 +59,8 @@ CSV.write("csv/corei7_long.csv", df_long)
 : "csv/corei7_long.csv"
 
 * Looking at Data
+
+** Histogram
 Pair plot for all variables:
 
 #+begin_SRC R :results graphics output :session *R* :file "img/histograms.pdf" :width 10 :height 10 :eval no-export :exports both :tangle "src/histograms.r"
@@ -84,6 +86,7 @@ ggpairs(log_df)
 #+RESULTS:
 [[file:img/histograms.pdf]]
 
+** Scatter
 Scatter plots splitting by value of Parallel:
 
 #+begin_SRC R :results graphics output :session *R* :file "img/scatter.pdf" :width 10 :height 10 :eval no-export :exports both :tangle "src/scatter.r"
@@ -109,6 +112,8 @@ ggplot(plot_df) +
 
 #+RESULTS:
 [[file:img/scatter.pdf]]
+
+** Regression
 
 Separating training  and testing data  sets, randomly picking rows.  Defining an
 MSE function and fitting an arbitrary performance model.
@@ -158,6 +163,8 @@ Functions ^ 2 & Parallel        3.29986e-7   4.08796e-8     8.07    <1e-15   2.4
 1 / Functions & Parallel        0.00682178   0.127472       0.05    0.9573  -0.243075      0.256718
 ──────────────────────────────────────────────────────────────────────────────────────────────────────
 #+end_example
+
+** MSE
 
 Computing MSE for the trained model using the test set.
 
