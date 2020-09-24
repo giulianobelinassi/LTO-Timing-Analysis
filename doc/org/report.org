@@ -44,13 +44,11 @@ using CSV, DataFrames, DataFramesMeta
 
 df = CSV.read("../../output_corei7.csv", delim = "; ")
 df_long = stack(df, Not([:Filename, :Functions,
-                         :Expected_insns, :Parallel]),
+                         :Expected_insns, :Parallel,
+                         :Inlined_percentage,
+                         :Num_partitions]),
                 variable_name = :Repetition,
                 value_name = :CompileTime)
-
-# Why are there :Expected_insns = 0?
-df_long = filter(:Expected_insns => x -> x > 0,
-                 df_long)
 
 CSV.write("csv/corei7_long.csv", df_long)
 #+end_SRC
@@ -59,9 +57,10 @@ CSV.write("csv/corei7_long.csv", df_long)
 : "csv/corei7_long.csv"
 
 * Looking at Data
+** Histogram
 Pair plot for all variables:
 
-#+begin_SRC R :results graphics output :session *R* :file "img/histograms.pdf" :width 10 :height 10 :eval no-export :exports both
+#+begin_SRC R :results graphics output :session *R* :file "img/histograms.png" :width 1080 :height 1080 :eval no-export :exports both :tangle "src/histograms.r"
 library(ggplot2)
 library(dplyr)
 library(GGally)
@@ -76,31 +75,35 @@ log_df = df %>%
     select(log_Expected_insns,
            log_Functions,
            log_CompileTime,
+           Num_partitions,
+           Inlined_percentage,
            Parallel)
 
 ggpairs(log_df)
 #+end_SRC
 
 #+RESULTS:
-[[file:img/histograms.pdf]]
+[[file:img/histograms.png]]
 
+** Scatter
 Scatter plots splitting by value of Parallel:
 
-#+begin_SRC R :results graphics output :session *R* :file "img/scatter.pdf" :width 10 :height 10 :eval no-export :exports both
+#+begin_SRC R :results graphics output :session *R* :file "img/scatter.png" :width 1080 :height 1080 :eval no-export :exports both :tangle "src/scatter.r"
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 
 plot_df = df %>%
-    pivot_longer(cols = c("Expected_insns", "Functions"),
+    pivot_longer(cols = c("Expected_insns", "Functions",
+                          "Inlined_percentage", "Num_partitions"),
                  names_to = "Parameter",
                  values_to = "Value")
 
 ggplot(plot_df) +
-    facet_grid(Parameter ~ Parallel, scales = "free_x") +
+    facet_wrap(Parameter ~ Parallel, ncol = 4, scales = "free_x") +
     geom_point(aes(x = Value,
                    y = CompileTime,
-                   color = Parallel),
+                   color = as.factor(Parallel)),
                alpha = 0.4) +
     scale_x_log10() +
     scale_y_log10() +
@@ -108,17 +111,19 @@ ggplot(plot_df) +
 #+end_SRC
 
 #+RESULTS:
-[[file:img/scatter.pdf]]
+[[file:img/scatter.png]]
+
+** Regression
 
 Separating training  and testing data  sets, randomly picking rows.  Defining an
 MSE function and fitting an arbitrary performance model.
 
-#+begin_SRC julia :eval no-export :exports both
+#+begin_SRC julia :eval no-export :exports both :tangle "src/fit_model.jl"
 using GLM, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
 
 df = CSV.read("csv/corei7_long.csv")
 
-train_ratio = 0.2
+train_ratio = 0.1
 train_size = round(Int, 0.2 * nrow(df))
 train_rows = shuffle(1:nrow(df))[1:train_size]
 df_train = df[train_rows, :]
@@ -129,8 +134,10 @@ df_test = df[test_rows, :]
 mse(y1, y2) = mean((y1 - y2) .^ 2)
 
 regression_full = lm(@formula(CompileTime ~ ((Expected_insns + Expected_insns ^ 2) +
-                                            (Functions + Functions ^ 2 + 1 / Functions)) *
-                                            Parallel),
+                                            (Functions + Functions ^ 2) +
+                                            (Inlined_percentage + Inlined_percentage ^ 2) +
+                                            (Num_partitions + Num_partitions ^ 2)) *
+                                            (Parallel + Parallel ^ 2)),
                      df_train)
 #+end_SRC
 
@@ -138,33 +145,50 @@ regression_full = lm(@formula(CompileTime ~ ((Expected_insns + Expected_insns ^ 
 #+begin_example
 StatsModels.TableRegressionModel{LinearModel{GLM.LmResp{Array{Float64,1}},GLM.DensePredChol{Float64,LinearAlgebra.Cholesky{Float64,Array{Float64,2}}}},Array{Float64,2}}
 
-CompileTime ~ 1 + Expected_insns + :(Expected_insns ^ 2) + Functions + :(Functions ^ 2) + :(1 / Functions) + Parallel + Expected_insns & Parallel + :(Expected_insns ^ 2) & Parallel + Functions & Parallel + :(Functions ^ 2) & Parallel + :(1 / Functions) & Parallel
+CompileTime ~ 1 + Expected_insns + :(Expected_insns ^ 2) + Functions + :(Functions ^ 2) + Inlined_percentage + :(Inlined_percentage ^ 2) + Num_partitions + :(Num_partitions ^ 2) + Parallel + :(Parallel ^ 2) + Expected_insns & Parallel + Expected_insns & :(Parallel ^ 2) + :(Expected_insns ^ 2) & Parallel + :(Expected_insns ^ 2) & :(Parallel ^ 2) + Functions & Parallel + Functions & :(Parallel ^ 2) + :(Functions ^ 2) & Parallel + :(Functions ^ 2) & :(Parallel ^ 2) + Inlined_percentage & Parallel + Inlined_percentage & :(Parallel ^ 2) + :(Inlined_percentage ^ 2) & Parallel + :(Inlined_percentage ^ 2) & :(Parallel ^ 2) + Num_partitions & Parallel + Num_partitions & :(Parallel ^ 2) + :(Num_partitions ^ 2) & Parallel + :(Num_partitions ^ 2) & :(Parallel ^ 2)
 
 Coefficients:
-──────────────────────────────────────────────────────────────────────────────────────────────────────
-                                      Coef.   Std. Error       t  Pr(>|t|)     Lower 95%     Upper 95%
-──────────────────────────────────────────────────────────────────────────────────────────────────────
-(Intercept)                     0.657556     0.028575      23.01    <1e-99   0.601537      0.713575
-Expected_insns                  0.000110704  2.67277e-6    41.42    <1e-99   0.000105464   0.000115944
-Expected_insns ^ 2              2.24493e-10  9.14308e-12   24.55    <1e-99   2.06569e-10   2.42418e-10
-Functions                       0.00599946   0.000196239   30.57    <1e-99   0.00561475    0.00638417
-Functions ^ 2                  -8.41491e-7   2.89766e-8   -29.04    <1e-99  -8.98297e-7   -7.84685e-7
-1 / Functions                  -0.62109      0.0891584     -6.97    <1e-11  -0.795877     -0.446303
-Parallel                        0.0195577    0.0403666      0.48    0.6281  -0.0595774     0.0986927
-Expected_insns & Parallel      -2.08749e-6   3.7138e-6     -0.56    0.5741  -9.36806e-6    5.19308e-6
-Expected_insns ^ 2 & Parallel  -1.83652e-10  1.28749e-11  -14.26    <1e-44  -2.08892e-10  -1.58412e-10
-Functions & Parallel           -0.00208176   0.000277288   -7.51    <1e-13  -0.00262536   -0.00153816
-Functions ^ 2 & Parallel        3.29986e-7   4.08796e-8     8.07    <1e-15   2.49845e-7    4.10126e-7
-1 / Functions & Parallel        0.00682178   0.127472       0.05    0.9573  -0.243075      0.256718
-──────────────────────────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                                              Coef.   Std. Error      t  Pr(>|t|)     Lower 95%     Upper 95%
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+(Intercept)                             0.0379151    0.059043      0.64    0.5208  -0.07782       0.15365
+Expected_insns                          0.000118298  3.8015e-6    31.12    <1e-99   0.000110847   0.00012575
+Expected_insns ^ 2                      2.50812e-10  1.22894e-11  20.41    <1e-90   2.26723e-10   2.74902e-10
+Functions                               0.00647257   0.000344286  18.80    <1e-76   0.0057977     0.00714743
+Functions ^ 2                          -2.98371e-7   2.37364e-7   -1.26    0.2088  -7.63648e-7    1.66906e-7
+Inlined_percentage                      0.721379     0.320217      2.25    0.0243   0.0936947     1.34906
+Inlined_percentage ^ 2                  0.331983     0.325479      1.02    0.3078  -0.306014      0.969981
+Num_partitions                          0.000829029  0.000451372   1.84    0.0663  -5.57421e-5    0.0017138
+Num_partitions ^ 2                     -5.85094e-7   2.44988e-7   -2.39    0.0169  -1.06532e-6   -1.04872e-7
+Parallel                                0.0311004    0.034854      0.89    0.3722  -0.0372197     0.0994206
+Parallel ^ 2                           -0.00228076   0.0036914    -0.62    0.5367  -0.00951658    0.00495505
+Expected_insns & Parallel              -2.07948e-5   2.24371e-6   -9.27    <1e-19  -2.51929e-5   -1.63968e-5
+Expected_insns & Parallel ^ 2           1.52475e-6   2.35936e-7    6.46    <1e-9    1.06227e-6    1.98723e-6
+Expected_insns ^ 2 & Parallel          -3.70573e-11  7.0771e-12   -5.24    <1e-6   -5.09297e-11  -2.31849e-11
+Expected_insns ^ 2 & Parallel ^ 2       2.20057e-12  7.47355e-13   2.94    0.0032   7.3562e-13    3.66552e-12
+Functions & Parallel                   -0.000995419  0.000205271  -4.85    <1e-5   -0.00139779   -0.000593049
+Functions & Parallel ^ 2                8.30331e-5   2.18745e-5    3.80    0.0001   4.0155e-5     0.000125911
+Functions ^ 2 & Parallel               -1.80646e-7   1.43868e-7   -1.26    0.2093  -4.62653e-7    1.01361e-7
+Functions ^ 2 & Parallel ^ 2            1.91354e-8   1.58161e-8    1.21    0.2264  -1.18671e-8    5.01379e-8
+Inlined_percentage & Parallel           0.213534     0.190122      1.12    0.2614  -0.15914       0.586207
+Inlined_percentage & Parallel ^ 2      -0.0168292    0.0201672    -0.83    0.4040  -0.0563605     0.0227021
+Inlined_percentage ^ 2 & Parallel      -0.324072     0.193436     -1.68    0.0939  -0.703242      0.0550984
+Inlined_percentage ^ 2 & Parallel ^ 2   0.0281924    0.020509      1.37    0.1693  -0.0120091     0.0683938
+Num_partitions & Parallel              -0.00010061   0.000269009  -0.37    0.7084  -0.000627918   0.000426698
+Num_partitions & Parallel ^ 2          -8.30201e-6   2.86094e-5   -0.29    0.7717  -6.43816e-5    4.77776e-5
+Num_partitions ^ 2 & Parallel           2.67122e-7   1.4819e-7     1.80    0.0715  -2.3358e-8     5.57602e-7
+Num_partitions ^ 2 & Parallel ^ 2      -2.33743e-8   1.61849e-8   -1.44    0.1487  -5.50996e-8    8.351e-9
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #+end_example
+
+** MSE
 
 Computing MSE for the trained model using the test set.
 
-#+begin_SRC julia :eval no-export :exports both
+#+begin_SRC julia :eval no-export :exports both :tangle "src/fit_model.jl"
 mse_full = mse(df_test[:, :CompileTime],
                predict(regression_full, select(df_test, Not(:CompileTime))))
 #+end_SRC
 
 #+RESULTS:
-: 1.184301348770404
+: 0.7939113682041267
