@@ -46,10 +46,10 @@ function run_gcc(x)
 		compiler = compiler_prefix * "gcc"
 	end
 
-	if (run_parallel)
-		parallel = "-fparallel-jobs=2"
-	else
+	if (run_parallel == 1)
 		parallel = ""
+	else
+		parallel = "-fparallel-jobs=" * string(run_parallel)
 	end
 
 	proc = "/tmp/gcc11_autopar/usr/local/bin/gcc"
