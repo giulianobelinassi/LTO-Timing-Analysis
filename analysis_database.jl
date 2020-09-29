@@ -69,8 +69,8 @@ train_size = round(Int, 0.2 * nrow(results))
 train_rows = shuffle(1:nrow(results))[1:train_size]
 D = results[train_rows, :]
 
-test_rows = [x for x in 1:nrow(results) if !(x in train_rows)]
-D = results[test_rows, :]
+#test_rows = [x for x in 1:nrow(results) if !(x in train_rows)]
+#D = results[test_rows, :]
 
 D = stack(D, Not([:filename, :functions, :expected_insns, :parallel, :inlined_percentage, :num_partitions]))
 sort!(D, [:expected_insns, :value])
