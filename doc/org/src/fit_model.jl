@@ -3,7 +3,7 @@ using GLM, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
 df = CSV.read("csv/corei7_long.csv")
 
 train_ratio = 0.1
-train_size = round(Int, 0.2 * nrow(df))
+train_size = round(Int, train_ratio * nrow(df))
 train_rows = shuffle(1:nrow(df))[1:train_size]
 df_train = df[train_rows, :]
 
