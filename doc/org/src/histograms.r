@@ -12,6 +12,8 @@ log_df = df %>%
     select(log_Expected_insns,
            log_Functions,
            log_CompileTime,
+           Num_partitions,
+           Inlined_percentage,
            Parallel)
 
 ggpairs(log_df)
