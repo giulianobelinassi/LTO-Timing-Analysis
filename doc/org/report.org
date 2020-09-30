@@ -114,7 +114,6 @@ ggplot(plot_df) +
 [[file:img/scatter.png]]
 
 ** Regression
-
 Separating training  and testing data  sets, randomly picking rows.  Defining an
 MSE function and fitting an arbitrary performance model.
 
@@ -124,7 +123,7 @@ using GLM, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
 df = CSV.read("csv/corei7_long.csv")
 
 train_ratio = 0.1
-train_size = round(Int, 0.2 * nrow(df))
+train_size = round(Int, train_ratio * nrow(df))
 train_rows = shuffle(1:nrow(df))[1:train_size]
 df_train = df[train_rows, :]
 
@@ -151,38 +150,37 @@ Coefficients:
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
                                               Coef.   Std. Error      t  Pr(>|t|)     Lower 95%     Upper 95%
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
-(Intercept)                             0.0379151    0.059043      0.64    0.5208  -0.07782       0.15365
-Expected_insns                          0.000118298  3.8015e-6    31.12    <1e-99   0.000110847   0.00012575
-Expected_insns ^ 2                      2.50812e-10  1.22894e-11  20.41    <1e-90   2.26723e-10   2.74902e-10
-Functions                               0.00647257   0.000344286  18.80    <1e-76   0.0057977     0.00714743
-Functions ^ 2                          -2.98371e-7   2.37364e-7   -1.26    0.2088  -7.63648e-7    1.66906e-7
-Inlined_percentage                      0.721379     0.320217      2.25    0.0243   0.0936947     1.34906
-Inlined_percentage ^ 2                  0.331983     0.325479      1.02    0.3078  -0.306014      0.969981
-Num_partitions                          0.000829029  0.000451372   1.84    0.0663  -5.57421e-5    0.0017138
-Num_partitions ^ 2                     -5.85094e-7   2.44988e-7   -2.39    0.0169  -1.06532e-6   -1.04872e-7
-Parallel                                0.0311004    0.034854      0.89    0.3722  -0.0372197     0.0994206
-Parallel ^ 2                           -0.00228076   0.0036914    -0.62    0.5367  -0.00951658    0.00495505
-Expected_insns & Parallel              -2.07948e-5   2.24371e-6   -9.27    <1e-19  -2.51929e-5   -1.63968e-5
-Expected_insns & Parallel ^ 2           1.52475e-6   2.35936e-7    6.46    <1e-9    1.06227e-6    1.98723e-6
-Expected_insns ^ 2 & Parallel          -3.70573e-11  7.0771e-12   -5.24    <1e-6   -5.09297e-11  -2.31849e-11
-Expected_insns ^ 2 & Parallel ^ 2       2.20057e-12  7.47355e-13   2.94    0.0032   7.3562e-13    3.66552e-12
-Functions & Parallel                   -0.000995419  0.000205271  -4.85    <1e-5   -0.00139779   -0.000593049
-Functions & Parallel ^ 2                8.30331e-5   2.18745e-5    3.80    0.0001   4.0155e-5     0.000125911
-Functions ^ 2 & Parallel               -1.80646e-7   1.43868e-7   -1.26    0.2093  -4.62653e-7    1.01361e-7
-Functions ^ 2 & Parallel ^ 2            1.91354e-8   1.58161e-8    1.21    0.2264  -1.18671e-8    5.01379e-8
-Inlined_percentage & Parallel           0.213534     0.190122      1.12    0.2614  -0.15914       0.586207
-Inlined_percentage & Parallel ^ 2      -0.0168292    0.0201672    -0.83    0.4040  -0.0563605     0.0227021
-Inlined_percentage ^ 2 & Parallel      -0.324072     0.193436     -1.68    0.0939  -0.703242      0.0550984
-Inlined_percentage ^ 2 & Parallel ^ 2   0.0281924    0.020509      1.37    0.1693  -0.0120091     0.0683938
-Num_partitions & Parallel              -0.00010061   0.000269009  -0.37    0.7084  -0.000627918   0.000426698
-Num_partitions & Parallel ^ 2          -8.30201e-6   2.86094e-5   -0.29    0.7717  -6.43816e-5    4.77776e-5
-Num_partitions ^ 2 & Parallel           2.67122e-7   1.4819e-7     1.80    0.0715  -2.3358e-8     5.57602e-7
-Num_partitions ^ 2 & Parallel ^ 2      -2.33743e-8   1.61849e-8   -1.44    0.1487  -5.50996e-8    8.351e-9
+(Intercept)                             0.106783     0.0889741     1.20    0.2301  -0.0676422     0.281208
+Expected_insns                          0.000136205  5.57437e-6   24.43    <1e-99   0.000125277   0.000147133
+Expected_insns ^ 2                      8.66048e-11  1.80568e-11   4.80    <1e-5    5.12063e-11   1.22003e-10
+Functions                               0.00622056   0.000535139  11.62    <1e-30   0.00517147    0.00726964
+Functions ^ 2                          -8.53725e-7   3.67478e-7   -2.32    0.0202  -1.57413e-6   -1.3332e-7
+Inlined_percentage                      1.23766      0.480655      2.57    0.0101   0.295382      2.17993
+Inlined_percentage ^ 2                 -0.0370408    0.484149     -0.08    0.9390  -0.986167      0.912085
+Num_partitions                         -0.00173367   0.000697614  -2.49    0.0130  -0.00310127   -0.000366066
+Num_partitions ^ 2                      4.54058e-7   3.84963e-7    1.18    0.2383  -3.00624e-7    1.20874e-6
+Parallel                                0.0245942    0.0539339     0.46    0.6484  -0.0811378     0.130326
+Parallel ^ 2                           -0.00250601   0.00572697   -0.44    0.6617  -0.0137332     0.00872115
+Expected_insns & Parallel              -2.08529e-5   3.30832e-6   -6.30    <1e-9   -2.73385e-5   -1.43673e-5
+Expected_insns & Parallel ^ 2           1.27869e-6   3.52e-7       3.63    0.0003   5.88634e-7    1.96876e-6
+Expected_insns ^ 2 & Parallel           1.33156e-11  1.07583e-11   1.24    0.2159  -7.77501e-12   3.44063e-11
+Expected_insns ^ 2 & Parallel ^ 2      -1.19585e-12  1.14981e-12  -1.04    0.2984  -3.44994e-12   1.05824e-12
+Functions & Parallel                   -0.00101894   0.000316087  -3.22    0.0013  -0.0016386    -0.000399285
+Functions & Parallel ^ 2                9.24457e-5   3.33648e-5    2.77    0.0056   2.70373e-5    0.000157854
+Functions ^ 2 & Parallel               -1.19456e-7   2.27848e-7   -0.52    0.6001  -5.6613e-7     3.27218e-7
+Functions ^ 2 & Parallel ^ 2            1.15752e-8   2.40388e-8    0.48    0.6302  -3.55506e-8    5.8701e-8
+Inlined_percentage & Parallel          -0.0176295    0.287593     -0.06    0.9511  -0.581427      0.546168
+Inlined_percentage & Parallel ^ 2       0.00739879   0.0305324     0.24    0.8085  -0.052457      0.0672546
+Inlined_percentage ^ 2 & Parallel      -0.124841     0.288601     -0.43    0.6653  -0.690615      0.440934
+Inlined_percentage ^ 2 & Parallel ^ 2   0.00586795   0.0306436     0.19    0.8481  -0.0542058     0.0659417
+Num_partitions & Parallel               0.000285324  0.000409701   0.70    0.4862  -0.000517856   0.0010885
+Num_partitions & Parallel ^ 2          -2.47263e-5   4.31755e-5   -0.57    0.5669  -0.000109368   5.9915e-5
+Num_partitions ^ 2 & Parallel           9.15869e-8   2.35802e-7    0.39    0.6977  -3.7068e-7     5.53854e-7
+Num_partitions ^ 2 & Parallel ^ 2      -9.03051e-9   2.48468e-8   -0.36    0.7163  -5.77402e-8    3.96792e-8
 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 #+end_example
 
 ** MSE
-
 Computing MSE for the trained model using the test set.
 
 #+begin_SRC julia :eval no-export :exports both :tangle "src/fit_model.jl"
@@ -191,4 +189,195 @@ mse_full = mse(df_test[:, :CompileTime],
 #+end_SRC
 
 #+RESULTS:
-: 0.7939113682041267
+: 0.8054789284093229
+
+** Cross Validation
+*** Running
+#+begin_SRC julia :eval no-export :exports results :tangle "src/cross_validation.jl"
+using GLM, CSV, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
+
+mse(y1, y2) = mean((y1 - y2) .^ 2)
+
+df = CSV.read("csv/corei7_long.csv")
+
+iterations = 100
+
+cross_validation = DataFrame(MSE = [],
+                             R2 = [],
+                             PredictedParallel = [],
+                             RealCompileTime = [],
+                             PredictedCompileTime = [])
+
+for i = 1:iterations
+    println(i)
+    train_ratio = 0.1
+    train_size = round(Int, train_ratio * nrow(df))
+    train_rows = shuffle(1:nrow(df))[1:train_size]
+    df_train = df[train_rows, :]
+
+    test_rows = [x for x in 1:nrow(df) if !(x in train_rows)]
+    df_test = df[test_rows, :]
+
+    regression = lm(@formula(CompileTime ~ ((Expected_insns +
+                                             Expected_insns ^ 2) +
+                                            (Functions +
+                                             Functions ^ 2) +
+                                            (Inlined_percentage +
+                                             Inlined_percentage ^ 2) +
+                                            (Num_partitions +
+                                             Num_partitions ^ 2)) *
+                             (Parallel + Parallel ^ 2)), df_train)
+
+    prediction = predict(regression, select(df_test, Not(:CompileTime)))
+
+    best_prediction = df_test[findmin(prediction)[2], :]
+
+    push!(cross_validation, (MSE = mse(df_test[:, :CompileTime], prediction),
+                             R2 = adjr2(regression),
+                             PredictedCompileTime = findmin(prediction)[1],
+                             RealCompileTime = best_prediction[:CompileTime],
+                             PredictedParallel = best_prediction[:Parallel]))
+
+end
+
+CSV.write("csv/cross_validation.csv", cross_validation)
+#+end_SRC
+
+#+RESULTS:
+:RESULTS:
+#+begin_example
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+#+end_example
+: "csv/cross_validation.csv"
+:END:
+*** Computing Statistics
+#+begin_SRC julia :eval no-export :exports results :tangle "src/cross_validation.jl"
+cv_df = CSV.read("csv/cross_validation.csv")
+cv_df
+#+end_SRC
+
+#+RESULTS:
+#+begin_export html
+<table class="data-frame"><thead><tr><th></th><th>MSE</th><th>R2</th><th>PredictedParallel</th><th>RealCompileTime</th><th>PredictedCompileTime</th></tr><tr><th></th><th>Float64</th><th>Float64</th><th>Int64</th><th>Float64</th><th>Float64</th></tr></thead><tbody><p>100 rows × 5 columns</p><tr><th>1</th><td>0.930116</td><td>0.936875</td><td>8</td><td>4.78818</td><td>-1.43669</td></tr><tr><th>2</th><td>0.844664</td><td>0.921958</td><td>1</td><td>0.0279605</td><td>0.0740601</td></tr><tr><th>3</th><td>0.773192</td><td>0.930679</td><td>1</td><td>0.0279605</td><td>0.0733869</td></tr><tr><th>4</th><td>0.772472</td><td>0.928754</td><td>4</td><td>0.0683465</td><td>0.0927624</td></tr><tr><th>5</th><td>18.213</td><td>0.918972</td><td>1</td><td>44.7125</td><td>-115.734</td></tr><tr><th>6</th><td>0.871959</td><td>0.938064</td><td>1</td><td>0.0168338</td><td>0.0754086</td></tr><tr><th>7</th><td>0.913254</td><td>0.91995</td><td>1</td><td>0.0279605</td><td>0.0683448</td></tr><tr><th>8</th><td>0.791918</td><td>0.928225</td><td>1</td><td>0.211934</td><td>0.0465965</td></tr><tr><th>9</th><td>0.862905</td><td>0.942732</td><td>1</td><td>0.0279605</td><td>0.0469905</td></tr><tr><th>10</th><td>0.859082</td><td>0.940544</td><td>1</td><td>0.0168338</td><td>0.0652974</td></tr><tr><th>11</th><td>1.02502</td><td>0.925922</td><td>1</td><td>0.0279605</td><td>0.0574469</td></tr><tr><th>12</th><td>0.992477</td><td>0.917109</td><td>1</td><td>0.0279605</td><td>0.0286201</td></tr><tr><th>13</th><td>22.8036</td><td>0.936028</td><td>8</td><td>19.9081</td><td>-244.4</td></tr><tr><th>14</th><td>0.942079</td><td>0.928529</td><td>8</td><td>19.9081</td><td>-2.52014</td></tr><tr><th>15</th><td>0.914324</td><td>0.919218</td><td>1</td><td>0.0279605</td><td>0.0447502</td></tr><tr><th>16</th><td>0.785139</td><td>0.92729</td><td>1</td><td>0.0279605</td><td>0.0670004</td></tr><tr><th>17</th><td>0.861861</td><td>0.938457</td><td>1</td><td>0.0279605</td><td>-0.00895655</td></tr><tr><th>18</th><td>1.03392</td><td>0.929546</td><td>8</td><td>19.9081</td><td>-7.12658</td></tr><tr><th>19</th><td>8.23665</td><td>0.936581</td><td>8</td><td>19.9081</td><td>-133.924</td></tr><tr><th>20</th><td>3.95871</td><td>0.931374</td><td>4</td><td>24.4301</td><td>-67.5501</td></tr><tr><th>21</th><td>11.0186</td><td>0.92417</td><td>8</td><td>19.9081</td><td>-160.604</td></tr><tr><th>22</th><td>0.789652</td><td>0.930924</td><td>1</td><td>0.0279605</td><td>0.0314176</td></tr><tr><th>23</th><td>0.825199</td><td>0.915132</td><td>1</td><td>0.211934</td><td>0.0949875</td></tr><tr><th>24</th><td>0.787516</td><td>0.930792</td><td>1</td><td>0.0279605</td><td>0.0588961</td></tr><tr><th>25</th><td>0.864626</td><td>0.926936</td><td>1</td><td>0.0279605</td><td>0.0365656</td></tr><tr><th>26</th><td>0.802192</td><td>0.93288</td><td>4</td><td>0.0683465</td><td>0.101082</td></tr><tr><th>27</th><td>0.951132</td><td>0.913545</td><td>1</td><td>0.0279605</td><td>0.0440557</td></tr><tr><th>28</th><td>0.803221</td><td>0.919849</td><td>1</td><td>0.0279605</td><td>0.0752538</td></tr><tr><th>29</th><td>0.821663</td><td>0.934066</td><td>1</td><td>0.0279605</td><td>0.0986651</td></tr><tr><th>30</th><td>0.77373</td><td>0.910285</td><td>8</td><td>0.0190939</td><td>0.101977</td></tr><tr><th>&vellip;</th><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td><td>&vellip;</td></tr></tbody></table>
+#+end_export
+
+Cross validated MSE, with 95% CI:
+
+#+begin_SRC julia :eval no-export :exports results :tangle "src/cross_validation.jl"
+println(mean(cv_df.MSE))
+println((1.96 * std(cv_df.MSE)) / sqrt(length(cv_df.MSE)))
+#+end_SRC
+
+#+RESULTS:
+: 3.3636531264181944
+: 1.6902823737764627
+
+Cross validated R2, with 95% CI:
+
+#+begin_SRC julia :eval no-export :exports results :tangle "src/cross_validation.jl"
+println(mean(cv_df.R2))
+println((1.96 * std(cv_df.R2)) / sqrt(length(cv_df.R2)))
+#+end_SRC
+
+#+RESULTS:
+: 0.9274544717628085
+: 0.0018544508183837532
