@@ -55,20 +55,14 @@ function lowercase_columns!(D)
 	end
 end
 
-function kl_prediction(D, formula)
-	f = @formula(0 ~ ((expected_insns + expected_insns ^ 2) +
-												(functions + functions ^ 2) +
-												(inlined_percentage + inlined_percentage ^ 2) +
-												(num_partitions + num_partitions ^ 2)) *
-												(parallel + parallel ^ 2))
-
-
-	selected_rows = kl_exchange(f,
+function kl_prediction(D, formula, experiments)
+	selected_rows = kl_exchange(formula,
 								D,
 								seed_design_size = 2,
-								experiments = 11,
-								design_k = 11,
-								candidates_l = size(D, 1) - 11)
+								experiments = experiments,
+								design_k = experiments,
+								candidates_l = 3000)
+								#candidates_l = size(D, 1) - experiments)
 
 	return selected_rows.indices[1]
 end
@@ -86,14 +80,15 @@ filter!(:expected_insns => x -> x > 0, results)
 stacked = stack(results, Not([:filename, :functions, :expected_insns, :parallel, :inlined_percentage, :num_partitions]))
 
 # Set regression formula
-regression_formula = @formula(value ~ ((expected_insns + expected_insns ^ 2) +
+regression_formula = @formula(0 ~ ((expected_insns + expected_insns ^ 2) +
                                             (functions + functions ^ 2) +
                                             (inlined_percentage + inlined_percentage ^ 2) +
                                             (num_partitions + num_partitions ^ 2)) *
                                             (parallel + parallel ^ 2))
 
 ## O que fazer com isso ?
-train_rows = kl_prediction(stacked, regression_formula)
+experiments = 30
+train_rows = kl_prediction(select(stacked, Not([:filename, :value, :variable])),  regression_formula, experiments)
 ##println(stacked[kl])
 
 # Set train set
@@ -101,11 +96,17 @@ train_rows = kl_prediction(stacked, regression_formula)
 #train_size = round(Int, 0.2 * nrow(results))
 #train_rows = shuffle(1:nrow(results))[1:train_size]
 train = stacked[train_rows, :]
+println(train)
 
 # Set test set
 #test_rows = [x for x in 1:nrow(results) if !(x in train_rows)]
 #test  = stacked[test_rows, :]
 
+regression_formula = @formula(value ~ ((expected_insns + expected_insns ^ 2) +
+                                            (functions + functions ^ 2) +
+                                            (inlined_percentage + inlined_percentage ^ 2) +
+                                            (num_partitions + num_partitions ^ 2)) *
+                                            (parallel + parallel ^ 2))
 # Fit data into test set using formula
 screening_fit = lm(regression_formula, train)
 
