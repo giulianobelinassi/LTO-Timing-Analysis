@@ -70,7 +70,7 @@ function kl_prediction(D, formula)
 								design_k = 11,
 								candidates_l = size(D, 1) - 11)
 
-	return selected_rows
+	return selected_rows.indices[1]
 end
 
 # Open Data for analysis
@@ -93,13 +93,13 @@ regression_formula = @formula(value ~ ((expected_insns + expected_insns ^ 2) +
                                             (parallel + parallel ^ 2))
 
 ## O que fazer com isso ?
-kl = kl_prediction(stacked, regression_formula)
+train_rows = kl_prediction(stacked, regression_formula)
 ##println(stacked[kl])
 
 # Set train set
-train_ratio = 0.2
-train_size = round(Int, 0.2 * nrow(results))
-train_rows = shuffle(1:nrow(results))[1:train_size]
+#train_ratio = 0.2
+#train_size = round(Int, 0.2 * nrow(results))
+#train_rows = shuffle(1:nrow(results))[1:train_size]
 train = stacked[train_rows, :]
 
 # Set test set
