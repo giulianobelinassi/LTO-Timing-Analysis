@@ -77,13 +77,12 @@ lowercase_columns!(results)
 filter!(:expected_insns => x -> x > 0, results)
 
 # Stack data on exectution_i into multiple lines
-stacked = stack(results, Not([:filename, :functions, :expected_insns, :parallel, :inlined_percentage, :num_partitions]))
+stacked = stack(results, Not([:filename, :functions, :expected_insns, :parallel, :inlined_functions]))
 
 # Set regression formula
 regression_formula = @formula(0 ~ ((expected_insns + expected_insns ^ 2) +
                                             (functions + functions ^ 2) +
-                                            (inlined_percentage + inlined_percentage ^ 2) +
-                                            (num_partitions + num_partitions ^ 2)) *
+                                            (inlined_functions + inlined_functions ^ 2)) *
                                             (parallel + parallel ^ 2))
 
 ## O que fazer com isso ?
@@ -102,11 +101,12 @@ println(train)
 #test_rows = [x for x in 1:nrow(results) if !(x in train_rows)]
 #test  = stacked[test_rows, :]
 
+
 regression_formula = @formula(value ~ ((expected_insns + expected_insns ^ 2) +
                                             (functions + functions ^ 2) +
-                                            (inlined_percentage + inlined_percentage ^ 2) +
-                                            (num_partitions + num_partitions ^ 2)) *
+                                            (inlined_functions + inlined_functions ^ 2)) *
                                             (parallel + parallel ^ 2))
+
 # Fit data into test set using formula
 screening_fit = lm(regression_formula, train)
 
@@ -116,4 +116,6 @@ println("R² = " * string(adjr2(screening_fit)))
 
 # Predict data based on fitted info
 results[!, :predicted] = predict(screening_fit, results)
+
+CSV.write("predicted.csv", results)
 plot_df(results)

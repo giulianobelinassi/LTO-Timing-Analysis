@@ -1,8 +1,10 @@
+#!/usr/bin/julia
+
 using GLM, CSV, StatsModels, DataFrames, DataFramesMeta, Random, Statistics
 
 mse(y1, y2) = mean((y1 - y2) .^ 2)
 
-df = CSV.read("csv/corei7_long.csv")
+df = CSV.read("../csv/corei7_long.csv")
 
 iterations = 100
 
@@ -44,9 +46,9 @@ for i = 1:iterations
 
 end
 
-CSV.write("csv/cross_validation.csv", cross_validation)
+CSV.write("../csv/cross_validation.csv", cross_validation)
 
-cv_df = CSV.read("csv/cross_validation.csv")
+cv_df = CSV.read("../csv/cross_validation.csv")
 cv_df
 
 println(mean(cv_df.MSE))
